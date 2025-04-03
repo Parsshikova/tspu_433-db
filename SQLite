@@ -1,0 +1,27 @@
+SELECT a.*, song_authors.song_id as sid, s.title, albums.id as album_id, albums.title FROM authors AS a
+ LEFT JOIN song_authors ON song_authors.author_id = a.id
+     LEFT JOIN songs AS s ON s.id = song_authors.song_id
+     LEFT JOIN albums ON albums.id = s.album_id
+WHERE albums.title LIKE '% To %'; 
+SELECT 
+    a.name AS author_name, 
+    albums.id AS album_id, 
+    albums.title AS album_title,
+    COUNT(s.id) AS track_count,
+    printf('%02d:%02d', SUM(s.duration) / 60, SUM(s.duration) % 60) AS album_duration
+FROM 
+    authors AS a
+LEFT JOIN 
+    song_authors ON song_authors.author_id = a.id
+LEFT JOIN 
+    songs AS s ON s.id = song_authors.song_id
+LEFT JOIN 
+    albums ON albums.id = s.album_id
+WHERE 
+    albums.title LIKE '% To %'
+GROUP BY 
+    albums.id, a.id;
+-------------------------------------------------------
+
+
+
