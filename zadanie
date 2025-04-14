@@ -1,0 +1,92 @@
+import sqlite3
+import csv
+
+def create_tables():
+    conn = sqlite3.connect('university.db')
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS faculties (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            dean TEXT NOT NULL,
+            office_number TEXT NOT NULL,
+            phone_number TEXT NOT NULL
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS groups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            number TEXT NOT NULL,
+            leader TEXT NOT NULL,
+            specialty TEXT NOT NULL,
+            faculty_id INTEGER,
+            FOREIGN KEY (faculty_id) REFERENCES faculties (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS students (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            full_name TEXT NOT NULL,
+            birth_date TEXT NOT NULL,
+            course INTEGER NOT NULL,
+            specialty TEXT NOT NULL,
+            phone_number TEXT NOT NULL,
+            faculty_id INTEGER,
+            gender TEXT NOT NULL,
+            group_id INTEGER,
+            FOREIGN KEY (faculty_id) REFERENCES faculties (id),
+            FOREIGN KEY (group_id) REFERENCES groups (id)
+        )
+    ''')
+
+    conn.commit()
+    conn.close()
+
+def import_faculties_from_csv(file_path):
+    conn = sqlite3.connect('university.db')
+    cursor = conn.cursor()
+
+    with open(file_path) as csvfile:
+        reader = csv.reader(csvfile, delimiter=';')
+        for row in reader:
+            cursor.execute('INSERT INTO faculties (name, dean, office_number, phone_number) VALUES (?, ?, ?, ?)', (row[1], row[2], row[3], row[4]))
+
+    conn.commit()
+    conn.close()
+
+def import_groups_from_csv(file_path):
+    conn = sqlite3.connect('university.db')
+    cursor = conn.cursor()
+
+    with open(file_path) as csvfile:
+        reader = csv.reader(csvfile, delimiter=';')
+        next(reader)  
+        for row in reader:
+            cursor.execute('INSERT INTO groups (number, leader, specialty, faculty_id) VALUES (?, ?, ?, ?)', (row[1], row[2], row[3], row[4]))
+
+    conn.commit()
+    conn.close()
+
+def import_students_from_csv(file_path):
+    conn = sqlite3.connect('university.db')
+    cursor = conn.cursor()
+
+    with open(file_path) as csvfile:
+        reader = csv.reader(csvfile, delimiter=';')
+        next(reader)
+        for row in reader:
+            cursor.execute('INSERT INTO students (full_name, birth_date, course, specialty, phone_number, faculty_id, gender, group_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+                           (row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]))
+
+    conn.commit()
+    conn.close()
+
+if __name__ == '__main__':
+    create_tables() 
+
+    import_faculties_from_csv('Факультет.csv')
+    import_groups_from_csv('Группа.csv')
+    import_students_from_csv('Студенты.csv')
