@@ -3,17 +3,27 @@ from bs4 import BeautifulSoup
 import csv
 import sqlite3
 
-
 BASE_URL = "https://books.toscrape.com/"
 CSV_FILE = "books.csv"
 DB_FILE = "books.db"
 NUM_BOOKS_TO_SCRAPE = 5
 
-
 def create_database():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS dates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date_value TEXT UNIQUE NOT NULL
+        )
+    """)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS books (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,22 +33,21 @@ def create_database():
             description TEXT,
             product_page_url TEXT UNIQUE,
             image_url TEXT,
-            category TEXT
-            ALTER TABLE books ADD COLUMN author TEXT;
-            ALTER TABLE books ADD COLUMN tags TEXT;
+            category_id INTEGER,
+            upc TEXT UNIQUE,
+            date_id INTEGER,
+            tags TEXT,
+            author TEXT
         )
     """)
     conn.commit()
     conn.close()
-
-
-def write_to_csv(data):
+def write_to_csv(data):   
     with open(CSV_FILE, 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['title', 'price', 'availability', 'description', 'product_page_url', 'image_url', 'category']
+        fieldnames = ['title', 'price', 'availability', 'description', 'product_page_url', 'image_url', 'category', 'upc']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(data)
-
 
 def load_csv_to_db():
     conn = sqlite3.connect(DB_FILE)
@@ -48,27 +57,54 @@ def load_csv_to_db():
         reader = csv.DictReader(csvfile)
         for row in reader:
             cursor.execute("""
-                INSERT INTO books (title, price, availability, description, product_page_url, image_url, category)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (row['title'], row['price'], row['availability'], row['description'], row['product_page_url'], row['image_url'], row['category']))
+                INSERT OR IGNORE INTO categories (name) VALUES (?)
+            """, (row['category'],))
+            cursor.execute("SELECT id FROM categories WHERE name = ?", (row['category'],))
+            category_id = cursor.fetchone()[0]
 
+            
+            tags_value = row.get('tags', '')
+
+            cursor.execute("""
+    INSERT OR IGNORE INTO books (title, price, availability, description, product_page_url, image_url, category_id, upc, tags, author)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+""", (
+    row['title'],
+    row['price'],
+    row['availability'],
+    row['description'],
+    row['product_page_url'],
+    row['image_url'],
+    category_id,
+    row['upc'],
+    row.get('tags', ''),
+    row.get('author', 'Unknown')
+))
     conn.commit()
     conn.close()
 
-
 def parse_book_details(book_url):
-    """Parses details from a single book's product page."""
+    """Парсит детали книги, включая автора."""
     try:
         response = requests.get(book_url)
-        response.raise_for_status()  
+        response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
 
         title = soup.find('h1').text.strip()
         price = float(soup.find('p', class_='price_color').text[1:])
         availability = soup.find('p', class_='instock availability').text.strip()
-        description = soup.find('article', class_='product_page').find('p', recursive=False).text.strip() if soup.find('article', class_='product_page').find('p', recursive=False) else 'No description available' 
+        description_tag = soup.find('article', class_='product_page').find('p', recursive=False)
+        description = description_tag.text.strip() if description_tag else 'No description available'
         image_url = BASE_URL + soup.find('img').get('src').replace('../..', '').lstrip('/')
         category = soup.find("ul", class_="breadcrumb").find_all('a')[2].text
+        upc = soup.find('table', class_='table').find_all('tr')[0].find('td').text
+
+       
+        author = "Unknown"  
+        
+        author_tag = soup.find('th', string='Author')
+        if author_tag:
+            author = author_tag.find_next_sibling('td').text.strip()
 
         return {
             'title': title,
@@ -77,22 +113,21 @@ def parse_book_details(book_url):
             'description': description,
             'product_page_url': book_url,
             'image_url': image_url,
-            'category': category
+            'category': category,
+            'upc': upc,
+            'author': author
         }
     except requests.exceptions.RequestException as e:
         print(f"Error fetching {book_url}: {e}")
-        return None 
+        return None
     except Exception as e:
         print(f"Error parsing {book_url}: {e}")
-        return None  
-
-
+        return None
 def scrape_books(num_books):
     """Scrapes book listings and their details from multiple pages."""
     books_data = []
     page_num = 1
-    books_scraped = 0
-
+    books_scraped =0
     while books_scraped < num_books:
         url = f"{BASE_URL}catalogue/page-{page_num}.html"
         try:
