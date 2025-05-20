@@ -1,0 +1,45 @@
+CREATE TABLE IF NOT EXISTS authors (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(255) NOT NULL
+);
+CREATE TABLE IF NOT EXISTS song_authors (
+    song_id INTEGER,
+    author_id INTEGER,
+    FOREIGN KEY (song_id) REFERENCES songs(id),
+    FOREIGN KEY (author_id) REFERENCES authors(id),
+    PRIMARY KEY (song_id, author_id)
+);
+
+INSERT INTO albums (title, description, year) VALUES 
+(' Songs To Remember', 'Songs to Remember is the debut studio album by the British pop Scritti Politti.', 1982),
+('OK Computer', 'OK Computer is the third studio album by the English rock band Radiohead, released on 21 May 1997.', 1997);
+
+
+INSERT INTO authors (name) VALUES 
+(' Scritti Politti'),
+('Radiohead');
+
+
+INSERT INTO songs (title, duration, album_id) VALUES 
+('The Lion Sleeps Tonight', 161, 1),
+('Maybelline', 142, 1),
+('Oh Lonesome Me', 152, 1),
+('North To Alaska', 171, 1),
+('Crying In The Rain', 118, 1),
+('Airbag', 287, 2),
+('Paranoid Android', 387, 2),
+('Let Down', 299, 2),
+('Karma Police', 264, 2),
+('Electioneering', 230, 2);
+
+INSERT INTO song_authors (song_id, author_id) VALUES 
+(1, 1),
+(2, 1),
+(3, 1),
+(4, 1),
+(5, 1),
+(6, 2),
+(7, 2),
+(8, 2),
+(9, 2),
+(10, 2); 

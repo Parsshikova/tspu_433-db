@@ -1,0 +1,135 @@
+SELECT a.*, song_authors.song_id as sid, s.title, albums.id as album_id, albums.title FROM authors AS a
+ LEFT JOIN song_authors ON song_authors.author_id = a.id
+     LEFT JOIN songs AS s ON s.id = song_authors.song_id
+     LEFT JOIN albums ON albums.id = s.album_id
+WHERE albums.title LIKE '% To %'; 
+SELECT 
+    a.name AS author_name, 
+    albums.id AS album_id, 
+    albums.title AS album_title,
+    COUNT(s.id) AS track_count,
+    printf('%02d:%02d', SUM(s.duration) / 60, SUM(s.duration) % 60) AS album_duration
+FROM 
+    authors AS a
+LEFT JOIN 
+    song_authors ON song_authors.author_id = a.id
+LEFT JOIN 
+    songs AS s ON s.id = song_authors.song_id
+LEFT JOIN 
+    albums ON albums.id = s.album_id
+WHERE 
+    albums.title LIKE '% To %'
+GROUP BY 
+    albums.id, a.id;
+-----------------------------------------------------------------------
+
+
+
+
+import sqlite3
+
+
+def create_connection(db_file):
+    conn = sqlite3.connect(db_file)
+    return conn
+
+
+def create_albums_table(conn):
+    sql = '''CREATE TABLE IF NOT EXISTS albums (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title VARCHAR(255),
+        description TEXT,
+        year INTEGER
+    );'''
+    conn.execute(sql)
+
+
+def create_songs_table(conn):
+    sql = '''CREATE TABLE IF NOT EXISTS songs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title VARCHAR(255),
+        duration INTEGER,
+        album_id INTEGER,
+        FOREIGN KEY (album_id) REFERENCES albums(id)
+    );'''
+    conn.execute(sql)
+
+
+def create_authors_table(conn):
+    sql = '''CREATE TABLE IF NOT EXISTS authors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name VARCHAR(255) NOT NULL
+    );'''
+    conn.execute(sql)
+
+
+def create_song_authors_table(conn):
+    sql = '''CREATE TABLE IF NOT EXISTS song_authors (
+        song_id INTEGER,
+        author_id INTEGER,
+        FOREIGN KEY (song_id) REFERENCES songs(id),
+        FOREIGN KEY (author_id) REFERENCES authors(id),
+        PRIMARY KEY (song_id, author_id)
+    );'''
+    conn.execute(sql)
+
+
+def add_album(conn, title, description, year):
+    sql = '''INSERT INTO albums (title, description, year) VALUES (?, ?, ?);'''
+    cur = conn.cursor()
+    cur.execute(sql, (title, description, year))
+    conn.commit()
+    return cur.lastrowid
+
+
+def add_author(conn, name):
+    sql = '''INSERT INTO authors (name) VALUES (?);'''
+    cur = conn.cursor()
+    cur.execute(sql, (name,))
+    conn.commit()
+    return cur.lastrowid
+
+
+def add_song(conn, title, duration, album_id):
+    sql = '''INSERT INTO songs (title, duration, album_id) VALUES (?, ?, ?);'''
+    cur = conn.cursor()
+    cur.execute(sql, (title, duration, album_id))
+    conn.commit()
+    return cur.lastrowid
+
+
+def add_song_author(conn, song_id, author_id):
+    sql = '''INSERT INTO song_authors (song_id, author_id) VALUES (?, ?);'''
+    cur = conn.cursor()
+    cur.execute(sql, (song_id, author_id))
+    conn.commit()
+
+
+if __name__ == "__main__":
+    database = "music.db"
+    conn = create_connection(database)
+
+
+    create_albums_table(conn)
+    create_songs_table(conn)
+    create_authors_table(conn)
+    create_song_authors_table(conn)
+
+   
+    album_id1 = add_album(conn, 'Songs To Remember', 'Songs to Remember is the debut studio album by the British pop Scritti Politti.', 1982)
+    album_id2 = add_album(conn, 'OK Computer', 'OK Computer is the third studio album by the English rock band Radiohead, released on 21 May 1997.', 1997)
+
+    author_id1 = add_author(conn, 'Scritti Politti')
+    author_id2 = add_author(conn, 'Radiohead')
+
+    song_id1 = add_song(conn, 'The Lion Sleeps Tonight', 161, album_id1)
+    song_id2 = add_song(conn, 'Airbag', 287, album_id2)
+
+    add_song_author(conn, song_id1, author_id1)
+    add_song_author(conn, song_id2, author_id2)
+    
+  
+    conn.close()
+
+
+

@@ -1,0 +1,54 @@
+import csv
+import sqlite3
+
+connection = sqlite3.connect('database1.sqlite')
+
+def create_user_table(conn):
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                       id INTEGER PRIMARY KEY AUTOINCREMENT,
+                       username VARCHAR(255) NOT NULL,
+                       external_id INT(11),
+                       name VARCHAR(255),
+                       last_name VARCHAR(255)
+                       )
+            ''')
+        conn.commit()
+
+def add_user(conn, username: str, external_id: int, name: str, last_name: str):
+    sql = '''INSERT INTO users (username, external_id, name, last_name) VALUES (?, ?, ?, ?);'''
+    cur = conn.cursor()
+    cur.execute(sql, (username, external_id, name, last_name))
+    conn.commit()
+    uid = cur.lastrowid
+    print(f'Добавили пользователя{name} с ID {uid}')
+    return uid
+
+
+
+   
+
+def read_1():
+    with open('username.csv') as csvfile:
+        reader = csv.reader(csvfile, delimiter=';')
+        for row in reader:
+            print(', '.join(row))
+
+def import_users(conn):
+    with open('username.csv') as csvfile:
+        reader = csv.DictReader(csvfile, delimiter=';')
+        for row in reader:
+            add_user(
+                 conn=conn,
+                 username=row['Username'],
+                 external_id=row['Identifier'],
+                 name=row['FirstName'],
+                 last_name=row['LastName'],
+                 
+            )
+create_user_table(connection)
+import_users(connection)
+            
+            
+
